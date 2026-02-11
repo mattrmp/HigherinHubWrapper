@@ -1,0 +1,9 @@
+{
+  "appId": "com.matthew.higherinwrapper",
+  "appName": "HigherinWrapper",
+  "webDir": "dist",
+  "server": {
+    "url": "https://higherinhub.com/login",
+    "cleartext": false
+  }
+}
