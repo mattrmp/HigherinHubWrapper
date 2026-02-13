@@ -11,9 +11,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
 
         window = UIWindow(frame: UIScreen.main.bounds)
-        window?.rootViewController = CustomViewController()
-        window?.makeKeyAndVisible()
 
+        let didEnterAmbassador = UserDefaults.standard.bool(forKey: "didEnterAmbassador")
+
+        if didEnterAmbassador {
+            window?.rootViewController = WebNavController.make()
+        } else {
+            window?.rootViewController = AmbassadorHomeViewController()
+        }
+
+        window?.makeKeyAndVisible()
         return true
     }
 }

@@ -3,7 +3,7 @@
   "appName": "HigherinWrapper",
   "webDir": "dist",
   "server": {
-    "url": "https://higherinhub.com/login",
+    "url": "https://higherinhub.com/ba-profile",
     "cleartext": false
   }
 }
