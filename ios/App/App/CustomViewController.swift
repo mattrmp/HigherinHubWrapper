@@ -2,7 +2,7 @@ import UIKit
 import WebKit
 import Capacitor
 
-final class CustomViewController: CAPBridgeViewController, WKNavigationDelegate {
+final class CustomViewController: CAPBridgeViewController, WKNavigationDelegate, WKUIDelegate {
 
     private let overlay = UIView()
     private let logoView = UIImageView()
@@ -15,14 +15,6 @@ final class CustomViewController: CAPBridgeViewController, WKNavigationDelegate 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Navigation setup (only works when embedded in a UINavigationController)
-        self.title = "Ambassador"
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            title: "Back",
-            style: .plain,
-            target: self,
-            action: #selector(goBackToHome)
-        )
         // Floating Back button (doesn't use nav bar)
         backButton.translatesAutoresizingMaskIntoConstraints = false
         backButton.setTitle("Back", for: .normal)
@@ -91,7 +83,13 @@ final class CustomViewController: CAPBridgeViewController, WKNavigationDelegate 
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        // Keep navigation + new window links inside the WebView
         webView?.navigationDelegate = self
+        webView?.uiDelegate = self
+
+        // ✅ Fix for web UI hiding behind the notch / battery area
+        webView?.scrollView.contentInsetAdjustmentBehavior = .always
     }
 
     private func hideOverlayAnimated() {
@@ -111,7 +109,8 @@ final class CustomViewController: CAPBridgeViewController, WKNavigationDelegate 
         }
     }
 
-    // WKNavigationDelegate
+    // MARK: - WKNavigationDelegate
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         hideOverlayAnimated()
     }
@@ -124,11 +123,52 @@ final class CustomViewController: CAPBridgeViewController, WKNavigationDelegate 
         hideOverlayAnimated()
     }
 
-    // Back button action
-    @objc private func goBackToHome() {
-        if let window = UIApplication.shared.windows.first {
-            window.rootViewController = AmbassadorHomeViewController()
-            window.makeKeyAndVisible()
+    // MARK: - WKUIDelegate
+    // Keeps target="_blank" / window.open() inside the same WebView (no Safari)
+    func webView(_ webView: WKWebView,
+                 createWebViewWith configuration: WKWebViewConfiguration,
+                 for navigationAction: WKNavigationAction,
+                 windowFeatures: WKWindowFeatures) -> WKWebView? {
+
+        if navigationAction.targetFrame == nil,
+           let url = navigationAction.request.url {
+            webView.load(URLRequest(url: url))
         }
+        return nil
+    }
+
+    // MARK: - Back button action
+
+    @objc private func goBackToHome() {
+
+        guard let webView = self.webView,
+              let currentURL = webView.url else {
+            return
+        }
+
+        let baHomeURLString = "https://higherinhub.com/home"
+
+        // 1️⃣ If we can go back in web history, do that first
+        if webView.canGoBack {
+            webView.goBack()
+            return
+        }
+
+        // 2️⃣ If we are NOT already on /home, load it
+        if currentURL.absoluteString != baHomeURLString {
+            if let url = URL(string: baHomeURLString) {
+                webView.load(URLRequest(url: url))
+            }
+            return
+        }
+
+        // 3️⃣ If already on /home, go back to native app homepage
+        guard
+            let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+            let window = windowScene.windows.first
+        else { return }
+
+        window.rootViewController = AmbassadorHomeViewController()
+        window.makeKeyAndVisible()
     }
 }
